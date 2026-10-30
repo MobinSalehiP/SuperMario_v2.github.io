@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>بازی ماجراجویی سکویی</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:18px;background:#eef8ff;color:#17243a;font-family:Tahoma,Arial,sans-serif;display:flex;justify-content:center}main{width:min(100%,1000px)}h1{font-size:clamp(1.2rem,3vw,2rem);margin:0 0 8px}p{line-height:1.8;margin:6px 0 12px}.panel{background:white;border:1px solid #d6e5f1;border-radius:16px;padding:12px;box-shadow:0 8px 25px #1b456012}.hud{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}.pill{background:#eef6ff;border-radius:999px;padding:8px 12px;font-weight:bold}canvas{display:block;width:100%;height:auto;border-radius:12px;border:2px solid #1c3857;background:#8ddcff;touch-action:pan-y}button{font:inherit;font-weight:bold;border:0;border-radius:12px;padding:11px 15px;background:#175cd3;color:#fff;cursor:pointer}.secondary{background:#e8eef6;color:#18243a}.controls{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}.buttons,.touch{display:flex;gap:8px;flex-wrap:wrap}.touch{direction:ltr}.touch button{width:60px;height:52px;padding:0;font-size:1.2rem;touch-action:none}.note{font-size:.9rem;color:#46566f}
+</style></head>
+<body><main>
+<h1>🎮 بازی ماجراجویی سکویی</h1>
+<p>بدَو، بپر، سکه جمع کن و به پرچم پایان برس! بازی در همین فایل HTML اجرا می‌شود و نصب نمی‌خواهد.</p>
+<section class="panel">
+<div class="hud"><div class="pill">🪙 سکه: <span id="coins">0</span></div><div class="pill">❤️ جان: <span id="lives">3</span></div><div class="pill" id="status">آماده‌ای؟ حرکت کن!</div></div>
+<canvas id="game" width="960" height="480"></canvas>
+<div class="controls"><div class="note">کیبورد: ← → یا A/D حرکت · Space یا ↑ پرش · R شروع دوباره</div>
+<div class="buttons"><button id="start">شروع / ادامه</button><button id="restart" class="secondary">شروع دوباره</button></div>
+<div class="touch"><button id="left">◀</button><button id="jump">⬆</button><button id="right">▶</button></div></div>
+</section><p class="note">روی دشمن‌ها بپر تا شکست بخورند. برخورد با دشمن یا افتادن، یک جان کم می‌کند.</p>
+</main>
+<script>
+(()=> {
+const c=document.getElementById('game'),x=c.getContext('2d'),$=id=>document.getElementById(id),W=960,H=480,world=3000;
+let keys={},run=false,win=false,over=false,cam=0,coins=0,lives=3,t=0,last=0;
+const p={x:55,y:300,w:30,h:42,vx:0,vy:0,ground:false,inv:0,face:1};
+const plats=[
+[0,420,520,60],[590,420,350,60],[1010,420,390,60],[1470,420,330,60],[1870,420,420,60],[2360,420,640,60],
+[230,340,120,18],[390,280,110,18],[680,340,110,18],[820,285,110,18],[1100,345,120,18],[1270,290,110,18],[1540,340,130,18],[1710,275,110,18],[1960,340,120,18],[2150,285,100,18],[2450,340,120,18],[2640,285,130,18]
+];
+let cs=[],es=[];
+function reset(){keys={};run=win=over=false;cam=coins=t=0;lives=3;p.x=55;p.y=300;p.vx=p.vy=0;p.ground=false;p.inv=0;cs=[];for(let i=0;i<24;i++){let cx=170+i*112,pl=plats.find(a=>cx>a[0]+8&&cx<a[0]+a[2]-8&&a[1]<410);cs.push({x:cx,y:pl?pl[1]-34:375,taken:false})}es=[[460,1.1],[850,-1.2],[1220,1.3],[1630,-1.1],[2050,1.4],[2500,-1.3]].map(a=>({x:a[0],y:392,v:a[1],alive:true}));hud();draw()}
+function hud(){$('coins').textContent=coins;$('lives').textContent=lives;$('status').textContent=win?'برنده شدی! 🎉':over?'بازی تمام شد':run?'در حال بازی…':'آماده‌ای؟ حرکت کن!'}
+function start(){if(win||over)reset();run=true;last=performance.now();hud();requestAnimationFrame(loop)}
+function jump(){if(!run)start();if(p.ground){p.vy=-11.8;p.ground=false}}
+function hurt(){if(p.inv>0)return;lives--;p.inv=1.3;p.vy=-6;p.vx=p.x<cam+W/2?-4:4;if(lives<=0){over=true;run=false}hud()}
+function loop(now){if(!run)return;let dt=Math.min((now-last)/1000,.033);last=now;t+=dt;update(dt);draw();if(run)requestAnimationFrame(loop)}
+function update(dt){
+ let l=keys.ArrowLeft||keys.a||keys.A,r=keys.ArrowRight||keys.d||keys.D;
+ if(l){p.vx-=.65;p.face=-1}if(r){p.vx+=.65;p.face=1}if(!l&&!r)p.vx*=.82;p.vx=Math.max(-5.2,Math.min(5.2,p.vx));
+ p.vy=Math.min(14,p.vy+.55);let oy=p.y;p.x+=p.vx;p.y+=p.vy;p.ground=false;
+ for(const a of plats)if(p.x+p.w>a[0]&&p.x<a[0]+a[2]&&oy+p.h<=a[1]&&p.y+p.h>=a[1]&&p.vy>=0){p.y=a[1]-p.h;p.vy=0;p.ground=true}
+ p.x=Math.max(0,Math.min(world-p.w,p.x));
+ if(p.y>H+100){hurt();p.x=Math.max(25,p.x-45);p.y=240;p.vy=0}if(p.inv>0)p.inv-=dt;
+ for(const q of cs)if(!q.taken&&Math.abs(p.x+p.w/2-q.x)<24&&Math.abs(p.y+p.h/2-q.y)<30){q.taken=true;coins++;hud()}
+ for(const e of es){if(!e.alive)continue;e.x+=e.v;let ground=plats.find(a=>a[1]===420&&e.x>=a[0]-28&&e.x<=a[0]+a[2]);if(!ground||e.x<ground[0]||e.x>ground[0]+ground[2]-28)e.v*=-1;
+ if(p.x+p.w>e.x&&p.x<e.x+28&&p.y+p.h>e.y&&p.y<e.y+28){if(p.vy>1&&p.y+p.h<e.y+18){e.alive=false;p.vy=-8}else hurt()}}
+ cam=Math.max(0,Math.min(world-W,p.x-W*.36));if(p.x>world-100){win=true;run=false;hud()}
+}
+function rr(a,b,w,h,r,col){x.fillStyle=col;x.beginPath();x.roundRect(a,b,w,h,r);x.fill()}
+function draw(){
+ x.clearRect(0,0,W,H);let sky=x.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#75d3ff');sky.addColorStop(1,'#d5f6ff');x.fillStyle=sky;x.fillRect(0,0,W,H);
+ x.fillStyle='#7bd68b';for(let i=0;i<9;i++){let xx=((i*180-cam*.22)%(W+220))-100;x.beginPath();x.ellipse(xx,420,120,90,0,Math.PI,0);x.fill()}
+ x.fillStyle='white';for(let i=0;i<8;i++){let xx=((i*155-cam*.12)%(W+120))-30,yy=55+(i%3)*38;x.beginPath();x.arc(xx,yy,18,0,7);x.arc(xx+22,yy-8,23,0,7);x.arc(xx+47,yy,17,0,7);x.fill()}
+ for(const a of plats){let xx=a[0]-cam;if(xx+a[2]<0||xx>W)continue;x.fillStyle='#7a4a27';x.fillRect(xx,a[1],a[2],a[3]);x.fillStyle='#39b54a';x.fillRect(xx,a[1],a[2],9);x.fillStyle='#267c36';for(let b=0;b<a[2];b+=28)x.fillRect(xx+b,a[1]+10,2,Math.min(20,a[3]-10))}
+ for(const q of cs){if(q.taken)continue;let xx=q.x-cam;if(xx< -20||xx>W+20)continue;x.fillStyle='#ffcb2e';x.beginPath();x.ellipse(xx,q.y,9,13,0,0,7);x.fill();x.strokeStyle='#d58a00';x.lineWidth=3;x.stroke();x.fillStyle='#fff1a8';x.fillRect(xx-2,q.y-7,3,12)}
+ for(const e of es){if(!e.alive)continue;let xx=e.x-cam;rr(xx,e.y,28,28,8,'#8e44ad');x.fillStyle='white';x.fillRect(xx+5,e.y+7,6,7);x.fillRect(xx+17,e.y+7,6,7);x.fillStyle='#1b1530';x.fillRect(xx+7,e.y+10,3,4);x.fillRect(xx+19,e.y+10,3,4);x.fillStyle='#49215c';x.fillRect(xx+4,e.y+25,7,5);x.fillRect(xx+18,e.y+25,7,5)}
+ let fx=world-95-cam;x.fillStyle='#343b4a';x.fillRect(fx,260,6,160);x.fillStyle='#ff4d5a';x.beginPath();x.moveTo(fx+6,262);x.lineTo(fx+65,280);x.lineTo(fx+6,300);x.closePath();x.fill();
+ let xx=p.x-cam,yy=p.y;if(!(p.inv>0&&Math.floor(t*12)%2===0)){rr(xx+3,yy+12,24,27,5,'#2467d8');rr(xx+5,yy+1,22,17,5,'#f4c29a');rr(xx+1,yy-3,27,9,4,'#e84855');x.fillStyle='#b82b38';x.fillRect(xx+4,yy+3,22,3);x.fillStyle='#1b2944';x.fillRect(xx+18,yy+7,3,4);rr(xx+1,yy+37,11,6,3,'#563c2e');rr(xx+18,yy+37,11,6,3,'#563c2e');x.fillStyle='#f8d64e';x.fillRect(xx+8,yy+19,4,4);x.fillRect(xx+19,yy+19,4,4)}
+ if(!run&&!win&&!over){x.fillStyle='#10233cbb';x.fillRect(180,175,600,105);x.fillStyle='white';x.textAlign='center';x.font='bold 26px Tahoma';x.fillText('برای شروع، دکمه را بزن یا حرکت کن',480,220);x.font='18px Tahoma';x.fillText('پرش کن و سکه‌ها را جمع کن!',480,253)}
+ if(win||over){x.fillStyle='#10233cbb';x.fillRect(220,165,520,130);x.fillStyle='white';x.textAlign='center';x.font='bold 30px Tahoma';x.fillText(win?'🎉 برنده شدی!':'بازی تمام شد',480,215);x.font='20px Tahoma';x.fillText('سکه‌های جمع‌شده: '+coins+' · برای بازی دوباره شروع را بزن',480,255)}
+}
+function kd(e){if(['ArrowLeft','ArrowRight','ArrowUp',' '].includes(e.key))e.preventDefault();keys[e.key]=true;if([' ','ArrowUp','w','W'].includes(e.key))jump();if(e.key==='r'||e.key==='R')reset();if(!run&&!win&&!over&&['ArrowLeft','ArrowRight','d','a'].includes(e.key))start()}
+window.addEventListener('keydown',kd);window.addEventListener('keyup',e=>keys[e.key]=false);$('start').onclick=start;$('restart').onclick=reset;
+function hold(id,key){let b=$(id),down=e=>{e.preventDefault();keys[key]=true;if(!run)start()},up=e=>{e.preventDefault();keys[key]=false};b.addEventListener('pointerdown',down);b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up);b.addEventListener('pointercancel',up)}
+hold('left','ArrowLeft');hold('right','ArrowRight');$('jump').addEventListener('pointerdown',e=>{e.preventDefault();jump()});
+reset();
+})();
+</script></body></html>
